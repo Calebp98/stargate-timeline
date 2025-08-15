@@ -142,8 +142,22 @@ export class ImageCache {
       // Check if file exists
       await fs.access(filepath);
       
-      // Read and return as data URL
+      // Read image data
       const imageData = await fs.readFile(filepath);
+      
+      // Skip small/corrupted images (like the 842-byte ones)
+      if (imageData.length < 10000) { // 10KB minimum for a valid satellite image
+        console.warn(`Skipping small cached image: ${date} (${imageData.length} bytes)`);
+        // Delete the bad cached file
+        try {
+          await fs.unlink(filepath);
+          console.log(`Deleted corrupted cache file: ${filename}`);
+        } catch (e) {
+          console.warn(`Failed to delete corrupted file: ${e}`);
+        }
+        return null;
+      }
+      
       const base64 = imageData.toString('base64');
       return `data:image/png;base64,${base64}`;
     } catch (error) {

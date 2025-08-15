@@ -115,21 +115,36 @@ async function getImageForDate(date: string, bbox: [number, number, number, numb
     //VERSION=3
     function setup() {
       return {
-        input: ["B02", "B03", "B04"],
+        input: ["B02", "B03", "B04", "CLM"],
         output: { bands: 3 }
       };
     }
     
     function evaluatePixel(sample) {
-      // Enhanced true color for better visibility in Texas terrain
-      let r = sample.B04 * 3.0;
-      let g = sample.B03 * 3.0; 
-      let b = sample.B02 * 3.0;
+      // Check for clouds/invalid data
+      if (sample.CLM == 1) {
+        return [0.5, 0.5, 0.5]; // Gray for clouds
+      }
       
-      // Apply slight gamma correction for better contrast
-      r = Math.pow(r, 0.9);
-      g = Math.pow(g, 0.9);
-      b = Math.pow(b, 0.9);
+      // True color RGB
+      let r = sample.B04; // Red
+      let g = sample.B03; // Green  
+      let b = sample.B02; // Blue
+      
+      // Check for no-data/black pixels
+      if (r + g + b < 0.001) {
+        return [0.1, 0.1, 0.1]; // Very dark gray instead of pure black
+      }
+      
+      // Enhanced contrast for better visibility
+      r = Math.min(1, r * 2.5);
+      g = Math.min(1, g * 2.5);
+      b = Math.min(1, b * 2.5);
+      
+      // Apply gamma correction for better contrast
+      r = Math.pow(r, 0.8);
+      g = Math.pow(g, 0.8);
+      b = Math.pow(b, 0.8);
       
       return [r, g, b];
     }
@@ -178,13 +193,84 @@ async function getImageForDate(date: string, bbox: [number, number, number, numb
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.warn(`No image found for ${date}: ${response.status} - ${errorText}`);
-      return null;
+      // Skip fallback for dates that are likely to have no data (future dates, etc.)
+      const requestDate = new Date(date);
+      const now = new Date();
+      const daysDifference = (requestDate - now) / (1000 * 60 * 60 * 24);
+      
+      if (daysDifference > -60) { // Only try fallback for dates within last 60 days
+        console.warn(`Primary request failed for ${date}: ${response.status}, trying fallback...`);
+      
+      // Try with a simpler evalscript
+      const fallbackEvalscript = `
+        //VERSION=3
+        function setup() {
+          return {
+            input: ["B04", "B03", "B02"],
+            output: { bands: 3 }
+          };
+        }
+        
+        function evaluatePixel(sample) {
+          return [sample.B04 * 2.5, sample.B03 * 2.5, sample.B02 * 2.5];
+        }
+      `;
+      
+      const fallbackRequest = {
+        ...requestBody,
+        evalscript: fallbackEvalscript
+      };
+      
+      const fallbackResponse = await fetch('https://sh.dataspace.copernicus.eu/api/v1/process', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(fallbackRequest),
+      });
+      
+      if (!fallbackResponse.ok) {
+        const errorText = await fallbackResponse.text();
+        console.warn(`Fallback also failed for ${date}: ${fallbackResponse.status} - ${errorText}`);
+        return null;
+      }
+      
+      const fallbackArrayBuffer = await fallbackResponse.arrayBuffer();
+      
+      // Validate fallback image
+      if (fallbackArrayBuffer.byteLength < 1000) {
+        console.warn(`Fallback image too small for ${date}: ${fallbackArrayBuffer.byteLength} bytes`);
+        return null;
+      }
+      
+      const fallbackBase64 = Buffer.from(fallbackArrayBuffer).toString('base64');
+      return `data:image/png;base64,${fallbackBase64}`;
+      } else {
+        console.warn(`No image available for ${date}: ${response.status}`);
+        return null;
+      }
     }
 
     const arrayBuffer = await response.arrayBuffer();
+    
+    // Validate image data
+    if (arrayBuffer.byteLength < 10000) { // Increase threshold to 10KB
+      console.warn(`Image too small for ${date}: ${arrayBuffer.byteLength} bytes`);
+      return null;
+    }
+    
     const base64 = Buffer.from(arrayBuffer).toString('base64');
+    
+    // Basic validation - check if it looks like a PNG
+    const pngHeader = Buffer.from(arrayBuffer.slice(0, 8));
+    const expectedPngHeader = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+    
+    if (!pngHeader.equals(expectedPngHeader)) {
+      console.warn(`Invalid PNG header for ${date}`);
+      return null;
+    }
+    
     return `data:image/png;base64,${base64}`;
   } catch (error) {
     console.error(`Error fetching image for ${date}:`, error);
@@ -220,17 +306,32 @@ export const POST: APIRoute = async ({ request }) => {
     let availableDates = await searchAvailableImages(bboxCoords, startDate, endDate);
     
     if (availableDates.length === 0) {
-      console.log('Search API unavailable, using dense sampling approach (every 3 days)');
-      // Fallback: generate dates every 3 days for maximum coverage
+      console.log('Search API unavailable, using intelligent sampling approach');
+      // Fallback: generate dates with intelligent intervals
       availableDates = [];
       const current = new Date(startDate);
       const end = new Date(endDate);
+      const now = new Date();
       
       while (current <= end) {
-        availableDates.push(current.toISOString().split('T')[0]);
-        current.setDate(current.getDate() + 3); // Every 3 days for dense coverage
+        const dateStr = current.toISOString().split('T')[0];
+        const daysDifference = (current - now) / (1000 * 60 * 60 * 24);
+        
+        // Skip future dates beyond a reasonable satellite data range
+        if (daysDifference <= 7) {
+          availableDates.push(dateStr);
+        }
+        
+        // Use different intervals based on how recent the date is
+        if (daysDifference > -30) {
+          current.setDate(current.getDate() + 7); // Weekly for recent dates
+        } else if (daysDifference > -180) {
+          current.setDate(current.getDate() + 14); // Bi-weekly for older dates
+        } else {
+          current.setDate(current.getDate() + 30); // Monthly for very old dates
+        }
       }
-      console.log(`Generated ${availableDates.length} potential dates for dense sampling`);
+      console.log(`Generated ${availableDates.length} potential dates using intelligent sampling`);
     }
 
     // Get existing images from repository
@@ -257,11 +358,23 @@ export const POST: APIRoute = async ({ request }) => {
         if (imageUrl) {
           console.log(`✓ Successfully got image for ${dateStr}`);
           
-          // Store the image to disk
+          // Store the image to disk with validation
           if (imageUrl.startsWith('data:image/png;base64,')) {
             const base64Data = imageUrl.replace('data:image/png;base64,', '');
             const imageBuffer = Buffer.from(base64Data, 'base64');
-            await cache.cacheImage(dateStr, imageBuffer);
+            
+            // Additional validation before caching
+            if (imageBuffer.length > 10000) { // Increase to 10KB minimum
+              try {
+                await cache.cacheImage(dateStr, imageBuffer);
+              } catch (error) {
+                console.warn(`Failed to cache image for ${dateStr}:`, error);
+                continue; // Skip this image
+              }
+            } else {
+              console.warn(`Skipping small/invalid image for ${dateStr}: ${imageBuffer.length} bytes`);
+              continue;
+            }
           }
           
           newImages.push({
