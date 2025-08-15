@@ -280,7 +280,7 @@ async function getImageForDate(date: string, bbox: [number, number, number, numb
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const { startDate, endDate, bbox } = await request.json();
+    const { startDate, endDate, bbox, fetchMore = false } = await request.json();
 
     console.log('API called with params:', { startDate, endDate, bbox });
     console.log('Environment check:', {
@@ -338,13 +338,29 @@ export const POST: APIRoute = async ({ request }) => {
     console.log('Checking repository for existing images...');
     const existingImages = await cache.getCachedImages(bboxCoords, startDate, endDate);
     
-    // Find missing dates that need to be fetched
+    // If we have a reasonable number of cached images, just return them (unless explicitly asked to fetch more)
+    if (existingImages && existingImages.length >= 10 && !fetchMore) {
+      console.log(`Returning ${existingImages.length} cached images without fetching new ones`);
+      return new Response(JSON.stringify({ 
+        images: existingImages,
+        source: 'repository',
+        newImageCount: 0,
+        totalImageCount: existingImages.length,
+        availableImageCount: availableDates.length,
+        remainingToFetch: 0,
+        cloudCoverThreshold: 40,
+        successRate: "N/A - using cached images"
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Only fetch new images if we have very few cached ones
     const missingDates = await cache.getMissingDates(availableDates);
-
     const newImages = [];
     
     // Fetch missing images (limit to avoid overwhelming the API)
-    const maxFetchCount = Math.min(missingDates.length, 20); // Limit to 20 images per request
+    const maxFetchCount = Math.min(missingDates.length, 5); // Reduce to just 5 per request
     const datesToFetch = missingDates.slice(0, maxFetchCount);
     
     console.log(`Fetching ${datesToFetch.length} missing images (${missingDates.length - datesToFetch.length} remaining for future requests)`);
