@@ -9,6 +9,8 @@
     "astro": "astro"
   },
   "dependencies": {
-    "astro": "^5.13.0"
+    "astro": "^5.13.0",
+    "gif-encoder-2": "^1.0.5",
+    "jimp": "^1.6.0"
   }
 }

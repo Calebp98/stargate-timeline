@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { ImageCache } from '../../lib/image-cache';
 
 interface TokenResponse {
   access_token: string;
@@ -164,7 +165,23 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const bboxCoords: [number, number, number, number] = bbox || [-121.2, 37.7, -121.1, 37.8];
+    const cache = new ImageCache();
 
+    // Check cache first
+    console.log('Checking cache for existing images...');
+    const cachedImages = await cache.getCachedImages(bboxCoords, startDate, endDate);
+    
+    if (cachedImages && cachedImages.length > 0) {
+      console.log(`✓ Found ${cachedImages.length} cached images, returning from cache`);
+      return new Response(JSON.stringify({ 
+        images: cachedImages,
+        source: 'cache'
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    console.log('No valid cache found, fetching from API...');
     const images = [];
     const start = new Date(startDate);
     const end = new Date(endDate);
@@ -181,25 +198,40 @@ export const POST: APIRoute = async ({ request }) => {
         
         if (imageUrl) {
           console.log(`✓ Successfully got image for ${dateStr}`);
+          
+          // Cache the image data
+          if (imageUrl.startsWith('data:image/png;base64,')) {
+            const base64Data = imageUrl.replace('data:image/png;base64,', '');
+            const imageBuffer = Buffer.from(base64Data, 'base64');
+            await cache.cacheImage(dateStr, imageBuffer);
+          }
+          
           images.push({
             date: dateStr,
-            imageUrl: imageUrl
+            imageUrl: imageUrl,
+            timestamp: Date.now()
           });
         } else {
           console.log(`✗ No image found for ${dateStr}`);
         }
         
         // Add delay between requests to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 250));
         
       } catch (error) {
         console.log(`✗ Error fetching image for ${dateStr}:`, error);
       }
 
-      current.setDate(current.getDate() + 30); // Every month to reduce API calls
+      current.setDate(current.getDate() + 7); // Every week for maximum coverage
     }
 
     console.log(`Found ${images.length} real satellite images`);
+    
+    // Update cache with new images
+    if (images.length > 0) {
+      await cache.updateCache(bboxCoords, images);
+      console.log('✓ Updated cache with new images');
+    }
     
     // If no real satellite images found, provide demo fallback
     if (images.length === 0) {
@@ -215,12 +247,18 @@ export const POST: APIRoute = async ({ request }) => {
         { date: '2025-03-01', imageUrl: 'https://via.placeholder.com/512x512/b5dabe/FFFFFF?text=Pre-Launch' },
         { date: '2025-06-01', imageUrl: 'https://via.placeholder.com/512x512/c6eccf/FFFFFF?text=Operations+Ready' }
       ];
-      return new Response(JSON.stringify({ images: demoImages }), {
+      return new Response(JSON.stringify({ 
+        images: demoImages,
+        source: 'demo'
+      }), {
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    return new Response(JSON.stringify({ images }), {
+    return new Response(JSON.stringify({ 
+      images,
+      source: 'api'
+    }), {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error) {
