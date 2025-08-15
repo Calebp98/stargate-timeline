@@ -18,6 +18,9 @@ const endDateStr = endDate.toISOString().split('T')[0];
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
 		<title>Stargate Datacenter Timeline</title>
 	</head>
 	<body>
@@ -29,11 +32,17 @@ const endDateStr = endDate.toISOString().split('T')[0];
 			
 			<main>
 				<div class="image-container">
+					<div class="image-date" id="image-date">Loading...</div>
 					<img id="current-image" src="" alt="Satellite image" />
 					<div class="loading" id="loading">Loading images...</div>
 				</div>
 				
 				<Timeline images={[]} />
+				
+				<div class="gif-controls">
+					<button id="copy-gif-btn" class="gif-btn" disabled>📋 Copy GIF</button>
+					<div id="gif-status" class="gif-status"></div>
+				</div>
 				
 				<div class="info">
 					<p>Cloud coverage: &lt; 30%</p>
@@ -52,7 +61,7 @@ const endDateStr = endDate.toISOString().split('T')[0];
 			body {
 				background: black;
 				color: white;
-				font-family: 'Courier New', monospace;
+				font-family: 'Space Mono', monospace;
 				min-height: 100vh;
 			}
 
@@ -91,9 +100,25 @@ const endDateStr = endDate.toISOString().split('T')[0];
 				height: 600px;
 				border: 2px solid white;
 				display: flex;
+				flex-direction: column;
 				align-items: center;
 				justify-content: center;
 				background: #111;
+			}
+
+			.image-date {
+				position: absolute;
+				top: 10px;
+				left: 50%;
+				transform: translateX(-50%);
+				color: white;
+				background: rgba(0, 0, 0, 0.8);
+				padding: 8px 16px;
+				border: 1px solid white;
+				font-family: 'Space Mono', monospace;
+				font-size: 1.1em;
+				font-weight: bold;
+				z-index: 10;
 			}
 
 			#current-image {
@@ -107,6 +132,42 @@ const endDateStr = endDate.toISOString().split('T')[0];
 				color: white;
 				font-size: 1.5em;
 				text-align: center;
+			}
+
+			.gif-controls {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 10px;
+				margin: 20px 0;
+			}
+
+			.gif-btn {
+				background: black;
+				color: white;
+				border: 2px solid white;
+				padding: 12px 24px;
+				cursor: pointer;
+				font-family: 'Space Mono', monospace;
+				font-size: 16px;
+				transition: all 0.2s;
+			}
+
+			.gif-btn:hover:not(:disabled) {
+				background: white;
+				color: black;
+			}
+
+			.gif-btn:disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+			}
+
+			.gif-status {
+				color: white;
+				font-family: 'Space Mono', monospace;
+				font-size: 14px;
+				min-height: 20px;
 			}
 
 			.info {
@@ -157,12 +218,19 @@ const endDateStr = endDate.toISOString().split('T')[0];
 					
 					currentImages = data.images;
 					console.log('Loaded images:', currentImages);
+					console.log('Image source:', data.source || 'unknown');
 					loading.style.display = 'none';
 					
 					if (currentImages.length > 0) {
 						console.log('Showing first image:', currentImages[0]);
 						updateTimeline();
 						updateTimelineDisplay(0);
+						
+						// Enable GIF button
+						const gifBtn = document.getElementById('copy-gif-btn');
+						if (gifBtn) {
+							gifBtn.disabled = false;
+						}
 					} else {
 						loading.textContent = 'No images found for the specified time range';
 						loading.style.display = 'block';
@@ -195,6 +263,18 @@ const endDateStr = endDate.toISOString().split('T')[0];
 				if (timelineSlider) {
 					timelineSlider.max = currentImages.length - 1;
 					timelineSlider.value = 0;
+					
+					// Remove any existing event listeners by cloning the element
+					const newSlider = timelineSlider.cloneNode(true);
+					timelineSlider.parentNode.replaceChild(newSlider, timelineSlider);
+					
+					// Add fresh event listener
+					newSlider.addEventListener('input', (e) => {
+						if (window.isPlaying) {
+							stopPlayback();
+						}
+						updateTimelineDisplay(parseInt(e.target.value));
+					});
 				}
 				
 				if (dateDisplay && currentImages.length > 0) {
@@ -215,38 +295,67 @@ const endDateStr = endDate.toISOString().split('T')[0];
 							marker.style.left = '50%';
 						}
 						marker.addEventListener('click', () => {
+							if (window.isPlaying) {
+								stopPlayback();
+							}
 							updateTimelineDisplay(index);
 						});
 						markersContainer.appendChild(marker);
 					});
 				}
 				
-				// Update timeline controls event listeners
-				if (timelineSlider) {
-					timelineSlider.addEventListener('input', (e) => {
-						updateTimelineDisplay(parseInt(e.target.value));
-					});
-				}
-				
+				// Update play button event listener
 				if (playBtn) {
-					playBtn.addEventListener('click', () => {
+					// Remove existing event listeners by cloning
+					const newPlayBtn = playBtn.cloneNode(true);
+					playBtn.parentNode.replaceChild(newPlayBtn, playBtn);
+					
+					// Add fresh event listener
+					newPlayBtn.addEventListener('click', () => {
 						if (window.isPlaying) {
-							clearInterval(window.playInterval);
-							playBtn.textContent = '▶️';
-							window.isPlaying = false;
+							stopPlayback();
 						} else {
-							window.playInterval = setInterval(() => {
-								const currentIndex = parseInt(timelineSlider.value);
-								if (currentIndex < currentImages.length - 1) {
-									updateTimelineDisplay(currentIndex + 1);
-								} else {
-									updateTimelineDisplay(0);
-								}
-							}, 1000);
-							playBtn.textContent = '⏸️';
-							window.isPlaying = true;
+							startPlayback();
 						}
 					});
+				}
+			}
+			
+			function startPlayback() {
+				window.isPlaying = true;
+				const playBtn = document.getElementById('play-btn');
+				const timelineSlider = document.getElementById('timeline-slider');
+				
+				if (playBtn) {
+					playBtn.textContent = '⏸️';
+				}
+				
+				window.playInterval = setInterval(() => {
+					if (!window.isPlaying) {
+						return; // Safety check
+					}
+					
+					const currentIndex = timelineSlider ? parseInt(timelineSlider.value) : 0;
+					if (currentIndex < currentImages.length - 1) {
+						updateTimelineDisplay(currentIndex + 1);
+					} else {
+						// Loop back to start
+						updateTimelineDisplay(0);
+					}
+				}, 100); // Fast playback - 0.1 seconds
+			}
+			
+			function stopPlayback() {
+				window.isPlaying = false;
+				const playBtn = document.getElementById('play-btn');
+				
+				if (playBtn) {
+					playBtn.textContent = '▶️';
+				}
+				
+				if (window.playInterval) {
+					clearInterval(window.playInterval);
+					window.playInterval = null;
 				}
 			}
 			
@@ -255,14 +364,27 @@ const endDateStr = endDate.toISOString().split('T')[0];
 					showImage(index);
 					const timelineSlider = document.getElementById('timeline-slider');
 					const dateDisplay = document.getElementById('date-display');
+					const imageDate = document.getElementById('image-date');
 					const markers = document.querySelectorAll('.marker');
 					
 					if (timelineSlider) {
 						timelineSlider.value = index;
 					}
 					
+					const currentDate = currentImages[index].date;
 					if (dateDisplay) {
-						dateDisplay.textContent = currentImages[index].date;
+						dateDisplay.textContent = currentDate;
+					}
+					
+					if (imageDate) {
+						// Format the date nicely
+						const date = new Date(currentDate);
+						const formattedDate = date.toLocaleDateString('en-US', {
+							year: 'numeric',
+							month: 'long',
+							day: 'numeric'
+						});
+						imageDate.textContent = formattedDate;
 					}
 					
 					markers.forEach((marker, i) => {
@@ -275,8 +397,94 @@ const endDateStr = endDate.toISOString().split('T')[0];
 			window.isPlaying = false;
 			window.playInterval = null;
 
+			async function createAndCopyGIF() {
+				const gifBtn = document.getElementById('copy-gif-btn');
+				const gifStatus = document.getElementById('gif-status');
+				
+				try {
+					gifBtn.disabled = true;
+					gifStatus.textContent = 'Generating GIF on server...';
+					
+					// Get current date range and bbox
+					const endDate = new Date();
+					const startDate = new Date();
+					startDate.setFullYear(endDate.getFullYear() - 1, endDate.getMonth() - 6);
+					const bbox = [-99.8065975964918, 32.492551389316205, -99.7717279119445, 32.51217098523884];
+					
+					// Call backend API to generate GIF
+					const response = await fetch('/api/generate-gif', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							startDate: startDate.toISOString().split('T')[0],
+							endDate: endDate.toISOString().split('T')[0],
+							bbox: bbox
+						})
+					});
+					
+					if (!response.ok) {
+						const errorData = await response.json();
+						throw new Error(errorData.error || 'Failed to generate GIF');
+					}
+					
+					const gifBlob = await response.blob();
+					const fileSizeKB = Math.round(gifBlob.size / 1024);
+					
+					gifStatus.textContent = `GIF ready (${fileSizeKB}KB), copying to clipboard...`;
+					
+					try {
+						// Copy to clipboard using the modern Clipboard API
+						const clipboardItem = new ClipboardItem({
+							'image/gif': gifBlob
+						});
+						
+						await navigator.clipboard.write([clipboardItem]);
+						gifStatus.textContent = `✅ GIF copied to clipboard! (${fileSizeKB}KB)`;
+						
+						setTimeout(() => {
+							gifStatus.textContent = '';
+						}, 4000);
+					} catch (clipError) {
+						console.error('Clipboard error:', clipError);
+						gifStatus.textContent = `❌ Clipboard failed. Downloading instead... (${fileSizeKB}KB)`;
+						
+						// Fallback: offer download
+						const url = URL.createObjectURL(gifBlob);
+						const a = document.createElement('a');
+						a.href = url;
+						a.download = 'stargate-timeline.gif';
+						a.click();
+						URL.revokeObjectURL(url);
+						
+						setTimeout(() => {
+							gifStatus.textContent = '';
+						}, 4000);
+					}
+					
+				} catch (error) {
+					console.error('GIF creation error:', error);
+					gifStatus.textContent = `❌ Error: ${error.message}`;
+					
+					setTimeout(() => {
+						gifStatus.textContent = '';
+					}, 4000);
+				} finally {
+					gifBtn.disabled = false;
+				}
+			}
+
 			// Initialize the app
 			initializeApp();
+			
+			// Add GIF button event listener
+			document.addEventListener('DOMContentLoaded', () => {
+				const gifBtn = document.getElementById('copy-gif-btn');
+				if (gifBtn) {
+					gifBtn.addEventListener('click', createAndCopyGIF);
+				}
+			});
 		</script>
 	</body>
 </html>

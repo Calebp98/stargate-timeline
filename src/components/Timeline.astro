@@ -34,61 +34,7 @@ const { images } = Astro.props;
   </div>
 </div>
 
-<script define:vars={{ images }}>
-  let currentIndex = 0;
-  let isPlaying = false;
-  let playInterval = null;
-
-  const slider = document.getElementById('timeline-slider');
-  const playBtn = document.getElementById('play-btn');
-  const dateDisplay = document.getElementById('date-display');
-  const markers = document.querySelectorAll('.marker');
-
-  function updateDisplay(index) {
-    currentIndex = index;
-    slider.value = index;
-    dateDisplay.textContent = images[index]?.date || '';
-    
-    markers.forEach((marker, i) => {
-      marker.classList.toggle('active', i === index);
-    });
-
-    const event = new CustomEvent('timeline-change', { 
-      detail: { index, image: images[index] } 
-    });
-    document.dispatchEvent(event);
-  }
-
-  slider.addEventListener('input', (e) => {
-    updateDisplay(parseInt(e.target.value));
-  });
-
-  playBtn.addEventListener('click', () => {
-    if (isPlaying) {
-      clearInterval(playInterval);
-      playBtn.textContent = '▶️';
-      isPlaying = false;
-    } else {
-      playInterval = setInterval(() => {
-        if (currentIndex < images.length - 1) {
-          updateDisplay(currentIndex + 1);
-        } else {
-          updateDisplay(0);
-        }
-      }, 1000);
-      playBtn.textContent = '⏸️';
-      isPlaying = true;
-    }
-  });
-
-  markers.forEach((marker, index) => {
-    marker.addEventListener('click', () => {
-      updateDisplay(index);
-    });
-  });
-
-  updateDisplay(0);
-</script>
+<!-- Timeline functionality is handled by the main page JavaScript -->
 
 <style>
   .timeline-container {
@@ -146,7 +92,7 @@ const { images } = Astro.props;
 
   .date-display {
     color: white;
-    font-family: monospace;
+    font-family: 'Space Mono', monospace;
     font-size: 16px;
     min-width: 100px;
   }
