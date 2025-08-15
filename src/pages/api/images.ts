@@ -60,6 +60,54 @@ async function getToken(): Promise<string> {
   return data.access_token;
 }
 
+async function searchAvailableImages(
+  bbox: [number, number, number, number], 
+  startDate: string, 
+  endDate: string
+): Promise<string[]> {
+  const token = await getToken();
+  
+  const searchBody = {
+    collections: ["sentinel-2-l2a"],
+    datetime: `${startDate}T00:00:00Z/${endDate}T23:59:59Z`,
+    bbox: bbox,
+    limit: 1000,
+    query: {
+      "eo:cloud_cover": {
+        "lt": 40
+      }
+    }
+  };
+
+  try {
+    const response = await fetch('https://sh.dataspace.copernicus.eu/api/v1/catalog/search', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(searchBody),
+    });
+
+    if (!response.ok) {
+      console.warn(`Search failed: ${response.status}`);
+      return [];
+    }
+
+    const data = await response.json();
+    const dates = data.features
+      .map((feature: any) => feature.properties.datetime.split('T')[0])
+      .sort()
+      .filter((date: string, index: number, array: string[]) => array.indexOf(date) === index); // Remove duplicates
+
+    console.log(`Found ${dates.length} available images with <30% cloud cover`);
+    return dates;
+  } catch (error) {
+    console.error('Error searching for available images:', error);
+    return [];
+  }
+}
+
 async function getImageForDate(date: string, bbox: [number, number, number, number]): Promise<string | null> {
   const token = await getToken();
   
@@ -100,9 +148,9 @@ async function getImageForDate(date: string, bbox: [number, number, number, numb
         dataFilter: {
           timeRange: {
             from: `${date}T00:00:00Z`,
-            to: `${new Date(new Date(date).getTime() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}T23:59:59Z`
+            to: `${date}T23:59:59Z`
           },
-          maxCloudCoverage: 30
+          maxCloudCoverage: 40
         }
       }]
     },
@@ -167,19 +215,40 @@ export const POST: APIRoute = async ({ request }) => {
     const bboxCoords: [number, number, number, number] = bbox || [-121.2, 37.7, -121.1, 37.8];
     const cache = new ImageCache();
 
+    // Try to search for available images, fall back to dense sampling if search fails
+    console.log('Searching for available images with <30% cloud cover...');
+    let availableDates = await searchAvailableImages(bboxCoords, startDate, endDate);
+    
+    if (availableDates.length === 0) {
+      console.log('Search API unavailable, using dense sampling approach (every 3 days)');
+      // Fallback: generate dates every 3 days for maximum coverage
+      availableDates = [];
+      const current = new Date(startDate);
+      const end = new Date(endDate);
+      
+      while (current <= end) {
+        availableDates.push(current.toISOString().split('T')[0]);
+        current.setDate(current.getDate() + 3); // Every 3 days for dense coverage
+      }
+      console.log(`Generated ${availableDates.length} potential dates for dense sampling`);
+    }
+
     // Get existing images from repository
     console.log('Checking repository for existing images...');
     const existingImages = await cache.getCachedImages(bboxCoords, startDate, endDate);
     
     // Find missing dates that need to be fetched
-    const missingDates = await cache.getMissingDates(startDate, endDate, 7);
-    
-    console.log(`Found ${existingImages?.length || 0} existing images, ${missingDates.length} dates missing`);
+    const missingDates = await cache.getMissingDates(availableDates);
 
     const newImages = [];
     
-    // Fetch only missing images
-    for (const dateStr of missingDates) {
+    // Fetch missing images (limit to avoid overwhelming the API)
+    const maxFetchCount = Math.min(missingDates.length, 20); // Limit to 20 images per request
+    const datesToFetch = missingDates.slice(0, maxFetchCount);
+    
+    console.log(`Fetching ${datesToFetch.length} missing images (${missingDates.length - datesToFetch.length} remaining for future requests)`);
+    
+    for (const dateStr of datesToFetch) {
       console.log(`Fetching missing image for date: ${dateStr}`);
       
       try {
@@ -205,7 +274,7 @@ export const POST: APIRoute = async ({ request }) => {
         }
         
         // Add delay between requests to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 250));
+        await new Promise(resolve => setTimeout(resolve, 500));
         
       } catch (error) {
         console.log(`✗ Error fetching image for ${dateStr}:`, error);
@@ -226,7 +295,11 @@ export const POST: APIRoute = async ({ request }) => {
       images: allImages,
       source: newImages.length > 0 ? 'mixed' : 'repository',
       newImageCount: newImages.length,
-      totalImageCount: allImages.length
+      totalImageCount: allImages.length,
+      availableImageCount: availableDates.length,
+      remainingToFetch: missingDates.length - datesToFetch.length,
+      cloudCoverThreshold: 40,
+      successRate: `${newImages.length}/${datesToFetch.length} images fetched successfully`
     }), {
       headers: { 'Content-Type': 'application/json' }
     });

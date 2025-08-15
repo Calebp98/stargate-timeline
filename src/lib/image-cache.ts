@@ -81,6 +81,9 @@ export class ImageCache {
       }
     }
 
+    // Sort images by date to ensure chronological order
+    validImages.sort((a, b) => new Date(a.date) - new Date(b.date));
+    
     console.log(`Found ${validImages.length} cached images for date range`);
     return validImages.length > 0 ? validImages : null;
   }
@@ -121,22 +124,13 @@ export class ImageCache {
     }
   }
 
-  async getMissingDates(startDate: string, endDate: string, intervalDays: number = 7): Promise<string[]> {
+  async getMissingDates(availableDates: string[]): Promise<string[]> {
     const metadata = await this.loadMetadata();
     const existingDates = new Set(metadata?.images.map(img => img.date) || []);
     
-    const missingDates = [];
-    const current = new Date(startDate);
-    const end = new Date(endDate);
-
-    while (current <= end) {
-      const dateStr = current.toISOString().split('T')[0];
-      if (!existingDates.has(dateStr)) {
-        missingDates.push(dateStr);
-      }
-      current.setDate(current.getDate() + intervalDays);
-    }
-
+    const missingDates = availableDates.filter(date => !existingDates.has(date));
+    
+    console.log(`Repository has ${existingDates.size} images, ${missingDates.length} of ${availableDates.length} available dates are missing`);
     return missingDates;
   }
 

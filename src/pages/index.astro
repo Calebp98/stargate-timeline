@@ -216,7 +216,8 @@ const endDateStr = endDate.toISOString().split('T')[0];
 						throw new Error(data.error);
 					}
 					
-					currentImages = data.images;
+					// Sort images by date to ensure chronological order
+					currentImages = data.images.sort((a, b) => new Date(a.date) - new Date(b.date));
 					console.log('Loaded images:', currentImages);
 					console.log('Image source:', data.source || 'unknown');
 					loading.style.display = 'none';
