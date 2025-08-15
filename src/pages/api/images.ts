@@ -167,31 +167,20 @@ export const POST: APIRoute = async ({ request }) => {
     const bboxCoords: [number, number, number, number] = bbox || [-121.2, 37.7, -121.1, 37.8];
     const cache = new ImageCache();
 
-    // Check cache first
-    console.log('Checking cache for existing images...');
-    const cachedImages = await cache.getCachedImages(bboxCoords, startDate, endDate);
+    // Get existing images from repository
+    console.log('Checking repository for existing images...');
+    const existingImages = await cache.getCachedImages(bboxCoords, startDate, endDate);
     
-    if (cachedImages && cachedImages.length > 0) {
-      console.log(`✓ Found ${cachedImages.length} cached images, returning from cache`);
-      return new Response(JSON.stringify({ 
-        images: cachedImages,
-        source: 'cache'
-      }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
+    // Find missing dates that need to be fetched
+    const missingDates = await cache.getMissingDates(startDate, endDate, 7);
+    
+    console.log(`Found ${existingImages?.length || 0} existing images, ${missingDates.length} dates missing`);
 
-    console.log('No valid cache found, fetching from API...');
-    const images = [];
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const current = new Date(start);
-
-    // Now using real Stargate datacenter coordinates!
-    // Reduce frequency to avoid rate limits - every month instead of every 2 weeks
-    while (current <= end) {
-      const dateStr = current.toISOString().split('T')[0];
-      console.log(`Attempting to fetch image for date: ${dateStr}`);
+    const newImages = [];
+    
+    // Fetch only missing images
+    for (const dateStr of missingDates) {
+      console.log(`Fetching missing image for date: ${dateStr}`);
       
       try {
         const imageUrl = await getImageForDate(dateStr, bboxCoords);
@@ -199,14 +188,14 @@ export const POST: APIRoute = async ({ request }) => {
         if (imageUrl) {
           console.log(`✓ Successfully got image for ${dateStr}`);
           
-          // Cache the image data
+          // Store the image to disk
           if (imageUrl.startsWith('data:image/png;base64,')) {
             const base64Data = imageUrl.replace('data:image/png;base64,', '');
             const imageBuffer = Buffer.from(base64Data, 'base64');
             await cache.cacheImage(dateStr, imageBuffer);
           }
           
-          images.push({
+          newImages.push({
             date: dateStr,
             imageUrl: imageUrl,
             timestamp: Date.now()
@@ -221,49 +210,29 @@ export const POST: APIRoute = async ({ request }) => {
       } catch (error) {
         console.log(`✗ Error fetching image for ${dateStr}:`, error);
       }
-
-      current.setDate(current.getDate() + 7); // Every week for maximum coverage
     }
 
-    console.log(`Found ${images.length} real satellite images`);
-    
-    // Update cache with new images
-    if (images.length > 0) {
-      await cache.updateCache(bboxCoords, images);
-      console.log('✓ Updated cache with new images');
+    // Add new images to repository
+    if (newImages.length > 0) {
+      await cache.addImages(newImages);
     }
+
+    // Get all images (existing + new) for the date range
+    const allImages = await cache.getCachedImages(bboxCoords, startDate, endDate) || [];
     
-    // If no real satellite images found, provide demo fallback
-    if (images.length === 0) {
-      const demoImages = [
-        { date: '2024-03-01', imageUrl: 'https://via.placeholder.com/512x512/2d4a3e/FFFFFF?text=Stargate+Pre-Construction' },
-        { date: '2024-04-15', imageUrl: 'https://via.placeholder.com/512x512/3e5c47/FFFFFF?text=Site+Preparation' },
-        { date: '2024-06-01', imageUrl: 'https://via.placeholder.com/512x512/4f6e58/FFFFFF?text=Foundation+Work' },
-        { date: '2024-07-15', imageUrl: 'https://via.placeholder.com/512x512/608069/FFFFFF?text=Building+Frame' },
-        { date: '2024-09-01', imageUrl: 'https://via.placeholder.com/512x512/71927a/FFFFFF?text=Infrastructure' },
-        { date: '2024-10-15', imageUrl: 'https://via.placeholder.com/512x512/82a48b/FFFFFF?text=Near+Completion' },
-        { date: '2024-12-01', imageUrl: 'https://via.placeholder.com/512x512/93b69c/FFFFFF?text=Final+Phase' },
-        { date: '2025-01-15', imageUrl: 'https://via.placeholder.com/512x512/a4c8ad/FFFFFF?text=Testing+Phase' },
-        { date: '2025-03-01', imageUrl: 'https://via.placeholder.com/512x512/b5dabe/FFFFFF?text=Pre-Launch' },
-        { date: '2025-06-01', imageUrl: 'https://via.placeholder.com/512x512/c6eccf/FFFFFF?text=Operations+Ready' }
-      ];
-      return new Response(JSON.stringify({ 
-        images: demoImages,
-        source: 'demo'
-      }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
+    console.log(`Returning ${allImages.length} total images (${newImages.length} newly fetched)`);
 
     return new Response(JSON.stringify({ 
-      images,
-      source: 'api'
+      images: allImages,
+      source: newImages.length > 0 ? 'mixed' : 'repository',
+      newImageCount: newImages.length,
+      totalImageCount: allImages.length
     }), {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error) {
-    console.error('API Error:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    console.error('Error in images endpoint:', error);
+    return new Response(JSON.stringify({ error: 'Failed to fetch images' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });

@@ -16,7 +16,6 @@ interface CacheMetadata {
 export class ImageCache {
   private cacheDir: string;
   private metadataFile: string;
-  private cacheMaxAge: number = 24 * 60 * 60 * 1000; // 24 hours
 
   constructor() {
     this.cacheDir = path.join(process.cwd(), '.cache', 'satellite-images');
@@ -64,27 +63,26 @@ export class ImageCache {
       return null;
     }
 
-    // Check if bbox matches and cache is not too old
-    const bboxMatches = JSON.stringify(metadata.bbox) === JSON.stringify(bbox);
-    const cacheAge = Date.now() - metadata.lastUpdated;
-    const cacheValid = cacheAge < this.cacheMaxAge;
-
-    if (!bboxMatches || !cacheValid) {
-      console.log('Cache invalid:', { bboxMatches, cacheAge, cacheValid });
-      return null;
-    }
-
-    // Filter images within date range
+    // Filter images within date range and load existing ones from disk
     const start = new Date(startDate);
     const end = new Date(endDate);
     
-    const validImages = metadata.images.filter(img => {
+    const validImages = [];
+    for (const img of metadata.images) {
       const imgDate = new Date(img.date);
-      return imgDate >= start && imgDate <= end;
-    });
+      if (imgDate >= start && imgDate <= end) {
+        const cachedImageUrl = await this.getCachedImagePath(img.date);
+        if (cachedImageUrl) {
+          validImages.push({
+            ...img,
+            imageUrl: cachedImageUrl
+          });
+        }
+      }
+    }
 
     console.log(`Found ${validImages.length} cached images for date range`);
-    return validImages;
+    return validImages.length > 0 ? validImages : null;
   }
 
   async cacheImage(date: string, imageData: Buffer): Promise<string> {
@@ -104,18 +102,42 @@ export class ImageCache {
     }
   }
 
-  async updateCache(
-    bbox: [number, number, number, number],
-    images: CachedImage[]
-  ): Promise<void> {
-    const metadata: CacheMetadata = {
-      bbox,
-      images,
-      lastUpdated: Date.now()
+  async addImages(newImages: CachedImage[]): Promise<void> {
+    const metadata = await this.loadMetadata() || { 
+      bbox: [0, 0, 0, 0], 
+      images: [], 
+      lastUpdated: Date.now() 
     };
 
-    await this.saveMetadata(metadata);
-    console.log(`Updated cache with ${images.length} images`);
+    // Add only new images (avoid duplicates by date)
+    const existingDates = new Set(metadata.images.map(img => img.date));
+    const imagesToAdd = newImages.filter(img => !existingDates.has(img.date));
+
+    if (imagesToAdd.length > 0) {
+      metadata.images.push(...imagesToAdd);
+      metadata.lastUpdated = Date.now();
+      await this.saveMetadata(metadata);
+      console.log(`Added ${imagesToAdd.length} new images to repository`);
+    }
+  }
+
+  async getMissingDates(startDate: string, endDate: string, intervalDays: number = 7): Promise<string[]> {
+    const metadata = await this.loadMetadata();
+    const existingDates = new Set(metadata?.images.map(img => img.date) || []);
+    
+    const missingDates = [];
+    const current = new Date(startDate);
+    const end = new Date(endDate);
+
+    while (current <= end) {
+      const dateStr = current.toISOString().split('T')[0];
+      if (!existingDates.has(dateStr)) {
+        missingDates.push(dateStr);
+      }
+      current.setDate(current.getDate() + intervalDays);
+    }
+
+    return missingDates;
   }
 
   async getCachedImagePath(date: string): Promise<string | null> {
