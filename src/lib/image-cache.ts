@@ -57,10 +57,24 @@ export class ImageCache {
     startDate: string,
     endDate: string
   ): Promise<CachedImage[] | null> {
-    const metadata = await this.loadMetadata();
+    let metadata = await this.loadMetadata();
     
     if (!metadata) {
       return null;
+    }
+
+    // Check if we need to rebuild metadata (if there are more PNG files than metadata entries)
+    try {
+      const files = await fs.readdir(this.cacheDir);
+      const pngFiles = files.filter(file => file.endsWith('.png'));
+      
+      if (pngFiles.length > metadata.images.length + 10) { // Significant difference
+        console.log(`Metadata inconsistent (${metadata.images.length} entries vs ${pngFiles.length} files), rebuilding...`);
+        await this.rebuildMetadataFromFiles();
+        metadata = await this.loadMetadata();
+      }
+    } catch (error) {
+      console.warn('Failed to check cache consistency:', error);
     }
 
     // Filter images within date range and load existing ones from disk
@@ -84,7 +98,7 @@ export class ImageCache {
     // Sort images by date to ensure chronological order
     validImages.sort((a, b) => new Date(a.date) - new Date(b.date));
     
-    console.log(`Found ${validImages.length} cached images for date range`);
+    console.log(`Found ${validImages.length} cached images for date range (total in cache: ${metadata.images.length})`);
     return validImages.length > 0 ? validImages : null;
   }
 
@@ -145,23 +159,47 @@ export class ImageCache {
       // Read image data
       const imageData = await fs.readFile(filepath);
       
-      // Skip small/corrupted images (like the 842-byte ones)
-      if (imageData.length < 10000) { // 10KB minimum for a valid satellite image
-        console.warn(`Skipping small cached image: ${date} (${imageData.length} bytes)`);
-        // Delete the bad cached file
-        try {
-          await fs.unlink(filepath);
-          console.log(`Deleted corrupted cache file: ${filename}`);
-        } catch (e) {
-          console.warn(`Failed to delete corrupted file: ${e}`);
-        }
-        return null;
+      // Include all images, even small ones (just log them)
+      if (imageData.length < 5000) { // 5KB threshold for logging
+        console.log(`Loading small cached image: ${date} (${imageData.length} bytes)`);
       }
       
       const base64 = imageData.toString('base64');
       return `data:image/png;base64,${base64}`;
     } catch (error) {
       return null;
+    }
+  }
+
+  async rebuildMetadataFromFiles(): Promise<void> {
+    try {
+      await this.ensureCacheDir();
+      const files = await fs.readdir(this.cacheDir);
+      const pngFiles = files.filter(file => file.endsWith('.png'));
+      
+      const images = [];
+      for (const file of pngFiles) {
+        const date = file.replace('.png', '');
+        const filepath = path.join(this.cacheDir, file);
+        const stat = await fs.stat(filepath);
+        
+        images.push({
+          date: date,
+          imageUrl: '', // Will be loaded dynamically
+          timestamp: stat.mtime.getTime()
+        });
+      }
+      
+      const metadata = {
+        bbox: [-99.8065975964918, 32.492551389316205, -99.7717279119445, 32.51217098523884],
+        images: images.sort((a, b) => new Date(a.date) - new Date(b.date)),
+        lastUpdated: Date.now()
+      };
+      
+      await this.saveMetadata(metadata);
+      console.log(`Rebuilt metadata with ${images.length} images from cache files`);
+    } catch (error) {
+      console.warn('Failed to rebuild metadata:', error);
     }
   }
 

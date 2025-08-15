@@ -363,8 +363,8 @@ export const POST: APIRoute = async ({ request }) => {
             const base64Data = imageUrl.replace('data:image/png;base64,', '');
             const imageBuffer = Buffer.from(base64Data, 'base64');
             
-            // Additional validation before caching
-            if (imageBuffer.length > 10000) { // Increase to 10KB minimum
+            // Additional validation before caching (keep strict for new images)
+            if (imageBuffer.length > 10000) { // Keep 10KB minimum for new images
               try {
                 await cache.cacheImage(dateStr, imageBuffer);
               } catch (error) {
