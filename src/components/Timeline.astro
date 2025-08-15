@@ -1,0 +1,178 @@
+---
+export interface Props {
+  images: Array<{
+    date: string;
+    imageUrl: string;
+  }>;
+}
+
+const { images } = Astro.props;
+---
+
+<div class="timeline-container">
+  <div class="timeline-controls">
+    <button id="play-btn" class="control-btn">▶️</button>
+    <input 
+      type="range" 
+      id="timeline-slider" 
+      min="0" 
+      max={images.length - 1} 
+      value="0"
+      class="timeline-slider"
+    />
+    <span id="date-display" class="date-display">{images[0]?.date || ''}</span>
+  </div>
+  
+  <div class="timeline-markers">
+    {images.map((_, index) => (
+      <div 
+        class="marker" 
+        data-index={index}
+        style={`left: ${(index / (images.length - 1)) * 100}%`}
+      ></div>
+    ))}
+  </div>
+</div>
+
+<script define:vars={{ images }}>
+  let currentIndex = 0;
+  let isPlaying = false;
+  let playInterval = null;
+
+  const slider = document.getElementById('timeline-slider');
+  const playBtn = document.getElementById('play-btn');
+  const dateDisplay = document.getElementById('date-display');
+  const markers = document.querySelectorAll('.marker');
+
+  function updateDisplay(index) {
+    currentIndex = index;
+    slider.value = index;
+    dateDisplay.textContent = images[index]?.date || '';
+    
+    markers.forEach((marker, i) => {
+      marker.classList.toggle('active', i === index);
+    });
+
+    const event = new CustomEvent('timeline-change', { 
+      detail: { index, image: images[index] } 
+    });
+    document.dispatchEvent(event);
+  }
+
+  slider.addEventListener('input', (e) => {
+    updateDisplay(parseInt(e.target.value));
+  });
+
+  playBtn.addEventListener('click', () => {
+    if (isPlaying) {
+      clearInterval(playInterval);
+      playBtn.textContent = '▶️';
+      isPlaying = false;
+    } else {
+      playInterval = setInterval(() => {
+        if (currentIndex < images.length - 1) {
+          updateDisplay(currentIndex + 1);
+        } else {
+          updateDisplay(0);
+        }
+      }, 1000);
+      playBtn.textContent = '⏸️';
+      isPlaying = true;
+    }
+  });
+
+  markers.forEach((marker, index) => {
+    marker.addEventListener('click', () => {
+      updateDisplay(index);
+    });
+  });
+
+  updateDisplay(0);
+</script>
+
+<style>
+  .timeline-container {
+    width: 100%;
+    padding: 20px;
+    background: black;
+    border: 2px solid white;
+  }
+
+  .timeline-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+
+  .control-btn {
+    background: black;
+    color: white;
+    border: 2px solid white;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+
+  .control-btn:hover {
+    background: white;
+    color: black;
+  }
+
+  .timeline-slider {
+    flex: 1;
+    height: 4px;
+    background: white;
+    outline: none;
+    -webkit-appearance: none;
+  }
+
+  .timeline-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border: 2px solid black;
+    cursor: pointer;
+  }
+
+  .timeline-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: white;
+    border: 2px solid black;
+    cursor: pointer;
+  }
+
+  .date-display {
+    color: white;
+    font-family: monospace;
+    font-size: 16px;
+    min-width: 100px;
+  }
+
+  .timeline-markers {
+    position: relative;
+    height: 10px;
+    background: #333;
+    border: 1px solid white;
+  }
+
+  .marker {
+    position: absolute;
+    width: 3px;
+    height: 10px;
+    background: white;
+    cursor: pointer;
+    transform: translateX(-50%);
+  }
+
+  .marker.active {
+    background: #ff0000;
+    width: 5px;
+  }
+
+  .marker:hover {
+    background: #ccc;
+  }
+</style>

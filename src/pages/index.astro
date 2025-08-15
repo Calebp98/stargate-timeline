@@ -1,5 +1,15 @@
 ---
+import Timeline from '../components/Timeline.astro';
 
+// Calculate date range from 1.5 years ago to current date
+const endDate = new Date();
+const startDate = new Date();
+startDate.setFullYear(endDate.getFullYear() - 1, endDate.getMonth() - 6);
+
+const startDateStr = startDate.toISOString().split('T')[0];
+const endDateStr = endDate.toISOString().split('T')[0];
+
+// Images will be loaded dynamically via the API
 ---
 
 <html lang="en">
@@ -8,9 +18,265 @@
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
+		<title>Stargate Datacenter Timeline</title>
 	</head>
 	<body>
-		<h1>Astro</h1>
+		<div class="app">
+			<header>
+				<h1>Stargate Datacenter Build Timeline</h1>
+				<p>Satellite imagery from {startDateStr} to {endDateStr}</p>
+			</header>
+			
+			<main>
+				<div class="image-container">
+					<img id="current-image" src="" alt="Satellite image" />
+					<div class="loading" id="loading">Loading images...</div>
+				</div>
+				
+				<Timeline images={[]} />
+				
+				<div class="info">
+					<p>Cloud coverage: &lt; 30%</p>
+					<p>Data source: Sentinel-2 via Copernicus Data Space</p>
+				</div>
+			</main>
+		</div>
+
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+
+			body {
+				background: black;
+				color: white;
+				font-family: 'Courier New', monospace;
+				min-height: 100vh;
+			}
+
+			.app {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 20px;
+			}
+
+			header {
+				text-align: center;
+				margin-bottom: 30px;
+				border-bottom: 2px solid white;
+				padding-bottom: 20px;
+			}
+
+			header h1 {
+				font-size: 2.5em;
+				margin-bottom: 10px;
+			}
+
+			header p {
+				font-size: 1.2em;
+				opacity: 0.8;
+			}
+
+			main {
+				display: flex;
+				flex-direction: column;
+				gap: 20px;
+			}
+
+			.image-container {
+				position: relative;
+				width: 100%;
+				height: 600px;
+				border: 2px solid white;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				background: #111;
+			}
+
+			#current-image {
+				max-width: 100%;
+				max-height: 100%;
+				object-fit: contain;
+				display: none;
+			}
+
+			.loading {
+				color: white;
+				font-size: 1.5em;
+				text-align: center;
+			}
+
+			.info {
+				background: black;
+				border: 2px solid white;
+				padding: 15px;
+				text-align: center;
+			}
+
+			.info p {
+				margin: 5px 0;
+				opacity: 0.9;
+			}
+		</style>
+
+		<script>
+			let currentImages = [];
+
+			async function initializeApp() {
+				try {
+					// Stargate datacenter coordinates in Texas
+					// Bounding box: [west, south, east, north]
+					const bbox = [-99.8065975964918, 32.492551389316205, -99.7717279119445, 32.51217098523884];
+					
+					const endDate = new Date();
+					const startDate = new Date();
+					startDate.setFullYear(endDate.getFullYear() - 1, endDate.getMonth() - 6);
+					
+					const loading = document.getElementById('loading');
+					loading.textContent = 'Fetching satellite images...';
+					
+					const response = await fetch('/api/images', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							startDate: startDate.toISOString().split('T')[0],
+							endDate: endDate.toISOString().split('T')[0],
+							bbox: bbox
+						})
+					});
+					const data = await response.json();
+					
+					if (data.error) {
+						throw new Error(data.error);
+					}
+					
+					currentImages = data.images;
+					console.log('Loaded images:', currentImages);
+					loading.style.display = 'none';
+					
+					if (currentImages.length > 0) {
+						console.log('Showing first image:', currentImages[0]);
+						updateTimeline();
+						updateTimelineDisplay(0);
+					} else {
+						loading.textContent = 'No images found for the specified time range';
+						loading.style.display = 'block';
+					}
+				} catch (error) {
+					console.error('Failed to initialize app:', error);
+					const loading = document.getElementById('loading');
+					loading.textContent = 'Error loading images. Check console for details.';
+				}
+			}
+
+			function showImage(index) {
+				const img = document.getElementById('current-image');
+				console.log('showImage called with index:', index, 'image:', currentImages[index]);
+				if (currentImages[index]) {
+					img.src = currentImages[index].imageUrl;
+					img.style.display = 'block';
+					console.log('Image src set to:', img.src);
+				} else {
+					console.log('No image at index:', index);
+				}
+			}
+
+			function updateTimeline() {
+				// Update the timeline component with real data
+				const timelineSlider = document.getElementById('timeline-slider');
+				const dateDisplay = document.getElementById('date-display');
+				const playBtn = document.getElementById('play-btn');
+				
+				if (timelineSlider) {
+					timelineSlider.max = currentImages.length - 1;
+					timelineSlider.value = 0;
+				}
+				
+				if (dateDisplay && currentImages.length > 0) {
+					dateDisplay.textContent = currentImages[0].date;
+				}
+				
+				// Remove old markers and create new ones
+				const markersContainer = document.querySelector('.timeline-markers');
+				if (markersContainer && currentImages.length > 0) {
+					markersContainer.innerHTML = '';
+					currentImages.forEach((image, index) => {
+						const marker = document.createElement('div');
+						marker.className = 'marker';
+						marker.dataset.index = index;
+						if (currentImages.length > 1) {
+							marker.style.left = `${(index / (currentImages.length - 1)) * 100}%`;
+						} else {
+							marker.style.left = '50%';
+						}
+						marker.addEventListener('click', () => {
+							updateTimelineDisplay(index);
+						});
+						markersContainer.appendChild(marker);
+					});
+				}
+				
+				// Update timeline controls event listeners
+				if (timelineSlider) {
+					timelineSlider.addEventListener('input', (e) => {
+						updateTimelineDisplay(parseInt(e.target.value));
+					});
+				}
+				
+				if (playBtn) {
+					playBtn.addEventListener('click', () => {
+						if (window.isPlaying) {
+							clearInterval(window.playInterval);
+							playBtn.textContent = '▶️';
+							window.isPlaying = false;
+						} else {
+							window.playInterval = setInterval(() => {
+								const currentIndex = parseInt(timelineSlider.value);
+								if (currentIndex < currentImages.length - 1) {
+									updateTimelineDisplay(currentIndex + 1);
+								} else {
+									updateTimelineDisplay(0);
+								}
+							}, 1000);
+							playBtn.textContent = '⏸️';
+							window.isPlaying = true;
+						}
+					});
+				}
+			}
+			
+			function updateTimelineDisplay(index) {
+				if (index >= 0 && index < currentImages.length) {
+					showImage(index);
+					const timelineSlider = document.getElementById('timeline-slider');
+					const dateDisplay = document.getElementById('date-display');
+					const markers = document.querySelectorAll('.marker');
+					
+					if (timelineSlider) {
+						timelineSlider.value = index;
+					}
+					
+					if (dateDisplay) {
+						dateDisplay.textContent = currentImages[index].date;
+					}
+					
+					markers.forEach((marker, i) => {
+						marker.classList.toggle('active', i === index);
+					});
+				}
+			}
+
+			// Initialize global play state
+			window.isPlaying = false;
+			window.playInterval = null;
+
+			// Initialize the app
+			initializeApp();
+		</script>
 	</body>
 </html>
