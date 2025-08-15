@@ -20,7 +20,7 @@ const endDateStr = endDate.toISOString().split('T')[0];
 		<meta name="generator" content={Astro.generator} />
 		<link rel="preconnect" href="https://fonts.googleapis.com">
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-		<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+		<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 		<title>Stargate Datacenter Timeline</title>
 	</head>
 	<body>
@@ -34,20 +34,28 @@ const endDateStr = endDate.toISOString().split('T')[0];
 				<div class="image-container">
 					<div class="image-date" id="image-date">Loading...</div>
 					<img id="current-image" src="" alt="Satellite image" />
+					<div class="scale-overlay" id="scale-overlay">
+						<div class="football-field">
+							<div class="field-outline"></div>
+							<div class="field-label">Football Field (120 yards)</div>
+						</div>
+					</div>
 					<div class="loading" id="loading">Loading images...</div>
 				</div>
 				
 				<Timeline images={[]} />
 				
-				<div class="gif-controls">
-					<button id="copy-gif-btn" class="gif-btn" disabled>📋 Copy GIF</button>
-					<button id="fetch-more-btn" class="gif-btn">🔄 Fetch More Images</button>
-					<div id="gif-status" class="gif-status"></div>
+				<div class="controls">
+					<button id="fetch-more-btn" class="fetch-btn">🔄 Fetch More Images</button>
+					<button id="scale-toggle-btn" class="fetch-btn">📏 Hide Scale</button>
 				</div>
 				
 				<div class="info">
+					<h3>About</h3>
+					<p>Tracking the Stargate Datacenter construction through satellite imagery from February 2024 to August 2025.</p>
+					<p>Location: 32.5022°N, 99.7892°W (Texas)</p>
+					<p>Imagery sourced from Sentinel-2 via Copernicus Data Space.</p>
 					<p>Cloud coverage: &lt; 30%</p>
-					<p>Data source: Sentinel-2 via Copernicus Data Space</p>
 				</div>
 			</main>
 		</div>
@@ -62,7 +70,7 @@ const endDateStr = endDate.toISOString().split('T')[0];
 			body {
 				background: black;
 				color: white;
-				font-family: 'Space Mono', monospace;
+				font-family: 'Fira Code', monospace;
 				min-height: 100vh;
 			}
 
@@ -116,7 +124,7 @@ const endDateStr = endDate.toISOString().split('T')[0];
 				background: rgba(0, 0, 0, 0.8);
 				padding: 8px 16px;
 				border: 1px solid white;
-				font-family: 'Space Mono', monospace;
+				font-family: 'Fira Code', monospace;
 				font-size: 1.1em;
 				font-weight: bold;
 				z-index: 10;
@@ -135,40 +143,91 @@ const endDateStr = endDate.toISOString().split('T')[0];
 				text-align: center;
 			}
 
-			.gif-controls {
+			.scale-overlay {
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				pointer-events: none;
+				z-index: 5;
+			}
+
+			.football-field {
+				position: absolute;
+				bottom: 60px;
+				left: 20px;
+			}
+
+			.field-outline {
+				width: 17px;
+				height: 12px;
+				border: 1px solid #00ff00;
+				background: rgba(0, 255, 0, 0.3);
+				position: relative;
+			}
+
+			.field-outline::before {
+				content: '';
+				position: absolute;
+				top: 50%;
+				left: 0;
+				right: 0;
+				height: 1px;
+				background: #00ff00;
+				transform: translateY(-50%);
+			}
+
+			.field-outline::after {
+				content: '';
+				position: absolute;
+				top: 0;
+				bottom: 0;
+				left: 50%;
+				width: 1px;
+				background: #00ff00;
+				transform: translateX(-50%);
+			}
+
+			.field-label {
+				color: #00ff00;
+				font-family: 'Fira Code', monospace;
+				font-size: 12px;
+				margin-top: 5px;
+				text-align: center;
+				background: rgba(0, 0, 0, 0.7);
+				padding: 2px 6px;
+				border-radius: 3px;
+			}
+
+			.controls {
 				display: flex;
-				flex-direction: column;
+				flex-direction: row;
+				justify-content: center;
 				align-items: center;
-				gap: 10px;
+				gap: 15px;
 				margin: 20px 0;
 			}
 
-			.gif-btn {
+			.fetch-btn {
 				background: black;
 				color: white;
 				border: 2px solid white;
 				padding: 12px 24px;
 				cursor: pointer;
-				font-family: 'Space Mono', monospace;
+				font-family: 'Fira Code', monospace;
 				font-size: 16px;
 				transition: all 0.2s;
 			}
 
-			.gif-btn:hover:not(:disabled) {
+			.fetch-btn:hover:not(:disabled) {
 				background: white;
 				color: black;
 			}
 
-			.gif-btn:disabled {
+			.fetch-btn:disabled {
 				opacity: 0.5;
 				cursor: not-allowed;
-			}
-
-			.gif-status {
-				color: white;
-				font-family: 'Space Mono', monospace;
-				font-size: 14px;
-				min-height: 20px;
 			}
 
 			.info {
@@ -176,6 +235,13 @@ const endDateStr = endDate.toISOString().split('T')[0];
 				border: 2px solid white;
 				padding: 15px;
 				text-align: center;
+			}
+
+			.info h3 {
+				margin: 0 0 10px 0;
+				font-size: 1.2em;
+				border-bottom: 1px solid white;
+				padding-bottom: 5px;
 			}
 
 			.info p {
@@ -228,11 +294,6 @@ const endDateStr = endDate.toISOString().split('T')[0];
 						updateTimeline();
 						updateTimelineDisplay(0);
 						
-						// Enable GIF button
-						const gifBtn = document.getElementById('copy-gif-btn');
-						if (gifBtn) {
-							gifBtn.disabled = false;
-						}
 					} else {
 						loading.textContent = 'No images found for the specified time range';
 						loading.style.display = 'block';
@@ -399,94 +460,35 @@ const endDateStr = endDate.toISOString().split('T')[0];
 			window.isPlaying = false;
 			window.playInterval = null;
 
-			async function createAndCopyGIF() {
-				const gifBtn = document.getElementById('copy-gif-btn');
-				const gifStatus = document.getElementById('gif-status');
+			// Scale overlay functionality
+			let scaleVisible = true;
+
+			function toggleScale() {
+				const scaleOverlay = document.getElementById('scale-overlay');
+				const scaleToggleBtn = document.getElementById('scale-toggle-btn');
 				
-				try {
-					gifBtn.disabled = true;
-					gifStatus.textContent = 'Generating GIF on server...';
-					
-					// Get current date range and bbox
-					const endDate = new Date();
-					const startDate = new Date();
-					startDate.setFullYear(endDate.getFullYear() - 1, endDate.getMonth() - 6);
-					const bbox = [-99.8065975964918, 32.492551389316205, -99.7717279119445, 32.51217098523884];
-					
-					// Call backend API to generate GIF
-					const response = await fetch('/api/generate-gif', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json',
-						},
-						body: JSON.stringify({
-							startDate: startDate.toISOString().split('T')[0],
-							endDate: endDate.toISOString().split('T')[0],
-							bbox: bbox
-						})
-					});
-					
-					if (!response.ok) {
-						const errorData = await response.json();
-						throw new Error(errorData.error || 'Failed to generate GIF');
-					}
-					
-					const gifBlob = await response.blob();
-					const fileSizeKB = Math.round(gifBlob.size / 1024);
-					
-					gifStatus.textContent = `GIF ready (${fileSizeKB}KB), copying to clipboard...`;
-					
-					try {
-						// Copy to clipboard using the modern Clipboard API
-						const clipboardItem = new ClipboardItem({
-							'image/gif': gifBlob
-						});
-						
-						await navigator.clipboard.write([clipboardItem]);
-						gifStatus.textContent = `✅ GIF copied to clipboard! (${fileSizeKB}KB)`;
-						
-						setTimeout(() => {
-							gifStatus.textContent = '';
-						}, 4000);
-					} catch (clipError) {
-						console.error('Clipboard error:', clipError);
-						gifStatus.textContent = `❌ Clipboard failed. Downloading instead... (${fileSizeKB}KB)`;
-						
-						// Fallback: offer download
-						const url = URL.createObjectURL(gifBlob);
-						const a = document.createElement('a');
-						a.href = url;
-						a.download = 'stargate-timeline.gif';
-						a.click();
-						URL.revokeObjectURL(url);
-						
-						setTimeout(() => {
-							gifStatus.textContent = '';
-						}, 4000);
-					}
-					
-				} catch (error) {
-					console.error('GIF creation error:', error);
-					gifStatus.textContent = `❌ Error: ${error.message}`;
-					
-					setTimeout(() => {
-						gifStatus.textContent = '';
-					}, 4000);
-				} finally {
-					gifBtn.disabled = false;
+				scaleVisible = !scaleVisible;
+				
+				if (scaleVisible) {
+					scaleOverlay.style.display = 'block';
+					scaleToggleBtn.textContent = '📏 Hide Scale';
+				} else {
+					scaleOverlay.style.display = 'none';
+					scaleToggleBtn.textContent = '📏 Show Scale';
 				}
 			}
+
 
 			// Initialize the app
 			initializeApp();
 			
 			// Add event listeners
 			document.addEventListener('DOMContentLoaded', () => {
-				const gifBtn = document.getElementById('copy-gif-btn');
 				const fetchMoreBtn = document.getElementById('fetch-more-btn');
+				const scaleToggleBtn = document.getElementById('scale-toggle-btn');
 				
-				if (gifBtn) {
-					gifBtn.addEventListener('click', createAndCopyGIF);
+				if (scaleToggleBtn) {
+					scaleToggleBtn.addEventListener('click', toggleScale);
 				}
 				
 				if (fetchMoreBtn) {
