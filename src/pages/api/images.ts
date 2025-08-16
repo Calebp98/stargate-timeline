@@ -432,7 +432,8 @@ export const POST: APIRoute = async ({ request }) => {
       availableImageCount: availableDates.length,
       remainingToFetch: missingDates.length - datesToFetch.length,
       cloudCoverThreshold: 40,
-      successRate: `${newImages.length}/${datesToFetch.length} images fetched successfully`
+      successRate: `${newImages.length}/${datesToFetch.length} images fetched successfully`,
+      cacheLoadTimeMs: cacheLoadTime
     }), {
       headers: { 'Content-Type': 'application/json' }
     });
