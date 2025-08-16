@@ -77,7 +77,7 @@ export class ImageCache {
       console.warn('Failed to check cache consistency:', error);
     }
 
-    // Filter images within date range and load existing ones from disk
+    // Filter images within date range - only check file existence, don't load image data yet
     const start = new Date(startDate);
     const end = new Date(endDate);
     
@@ -85,12 +85,19 @@ export class ImageCache {
     for (const img of metadata.images) {
       const imgDate = new Date(img.date);
       if (imgDate >= start && imgDate <= end) {
-        const cachedImageUrl = await this.getCachedImagePath(img.date);
-        if (cachedImageUrl) {
+        // Quick file existence check instead of full image load
+        const filename = this.getCacheKey(img.date);
+        const filepath = path.join(this.cacheDir, filename);
+        
+        try {
+          await fs.access(filepath);
+          // File exists - add to list but load image data lazily
           validImages.push({
             ...img,
-            imageUrl: cachedImageUrl
+            imageUrl: `/api/cached-image/${img.date}` // Lazy loading endpoint
           });
+        } catch (error) {
+          // File doesn't exist, skip
         }
       }
     }
