@@ -336,11 +336,14 @@ export const POST: APIRoute = async ({ request }) => {
 
     // Get existing images from repository
     console.log('Checking repository for existing images...');
+    const startTime = Date.now();
     const existingImages = await cache.getCachedImages(bboxCoords, startDate, endDate);
+    const cacheLoadTime = Date.now() - startTime;
+    console.log(`Cache load took ${cacheLoadTime}ms`);
     
-    // If we have a reasonable number of cached images, just return them (unless explicitly asked to fetch more)
-    if (existingImages && existingImages.length >= 10 && !fetchMore) {
-      console.log(`Returning ${existingImages.length} cached images without fetching new ones`);
+    // If we have cached images, return them immediately (lower threshold for better UX)
+    if (existingImages && existingImages.length >= 5 && !fetchMore) {
+      console.log(`Returning ${existingImages.length} cached images without fetching new ones (cache load: ${cacheLoadTime}ms)`);
       return new Response(JSON.stringify({ 
         images: existingImages,
         source: 'repository',
@@ -349,7 +352,8 @@ export const POST: APIRoute = async ({ request }) => {
         availableImageCount: availableDates.length,
         remainingToFetch: 0,
         cloudCoverThreshold: 40,
-        successRate: "N/A - using cached images"
+        successRate: "N/A - using cached images",
+        cacheLoadTimeMs: cacheLoadTime
       }), {
         headers: { 'Content-Type': 'application/json' }
       });
