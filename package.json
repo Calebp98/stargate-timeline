@@ -12,6 +12,10 @@
     "@astrojs/node": "^9.4.2",
     "astro": "^5.13.0",
     "gif-encoder-2": "^1.0.5",
-    "jimp": "^1.6.0"
+    "jimp": "^1.6.0",
+    "pm2": "^6.0.8"
+  },
+  "devDependencies": {
+    "@astrojs/node": "^9.4.2"
   }
 }
