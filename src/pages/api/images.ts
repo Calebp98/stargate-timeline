@@ -399,7 +399,7 @@ export const POST: APIRoute = async ({ request }) => {
           
           newImages.push({
             date: dateStr,
-            imageUrl: imageUrl,
+            imageUrl: `/stargate-timeline/cache/${dateStr}.png`, // Static URL  
             timestamp: Date.now()
           });
         } else {

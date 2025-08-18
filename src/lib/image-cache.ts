@@ -34,6 +34,17 @@ export class ImageCache {
     return `${date}.png`;
   }
 
+  private async fileExists(date: string): Promise<boolean> {
+    try {
+      const filename = this.getCacheKey(date);
+      const filepath = path.join(this.cacheDir, filename);
+      await fs.access(filepath);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
   private async loadMetadata(): Promise<CacheMetadata | null> {
     try {
       const data = await fs.readFile(this.metadataFile, 'utf-8');
@@ -60,7 +71,13 @@ export class ImageCache {
     let metadata = await this.loadMetadata();
     
     if (!metadata) {
-      return null;
+      // Try to rebuild metadata from existing PNG files
+      await this.rebuildMetadataFromFiles();
+      metadata = await this.loadMetadata();
+      
+      if (!metadata) {
+        return null;
+      }
     }
 
     // Check if we need to rebuild metadata (if there are more PNG files than metadata entries)
@@ -77,7 +94,7 @@ export class ImageCache {
       console.warn('Failed to check cache consistency:', error);
     }
 
-    // Filter images within date range - only check file existence, don't load image data yet
+    // Filter images within date range and return static file URLs
     const start = new Date(startDate);
     const end = new Date(endDate);
     
@@ -85,19 +102,12 @@ export class ImageCache {
     for (const img of metadata.images) {
       const imgDate = new Date(img.date);
       if (imgDate >= start && imgDate <= end) {
-        // Quick file existence check instead of full image load
-        const filename = this.getCacheKey(img.date);
-        const filepath = path.join(this.cacheDir, filename);
-        
-        try {
-          await fs.access(filepath);
-          // File exists - add to list but load image data lazily
+        // Check if file exists and return static URL
+        if (await this.fileExists(img.date)) {
           validImages.push({
             ...img,
-            imageUrl: `/api/cached-image/${img.date}` // Lazy loading endpoint
+            imageUrl: `/stargate-timeline/cache/${img.date}.png` // Static file URL
           });
-        } catch (error) {
-          // File doesn't exist, skip
         }
       }
     }
@@ -192,7 +202,7 @@ export class ImageCache {
         
         images.push({
           date: date,
-          imageUrl: '', // Will be loaded dynamically
+          imageUrl: `/stargate-timeline/cache/${date}.png`, // Static URL
           timestamp: stat.mtime.getTime()
         });
       }
