@@ -45,17 +45,12 @@ const endDateStr = endDate.toISOString().split('T')[0];
 				
 				<Timeline images={[]} />
 				
-				<div class="controls">
-					<button id="fetch-more-btn" class="fetch-btn">🔄 Fetch More Images</button>
-					<button id="scale-toggle-btn" class="fetch-btn">📏 Hide Scale</button>
-				</div>
 				
 				<div class="info">
 					<h3>About</h3>
 					<p>Tracking the Stargate Datacenter construction through satellite imagery from February 2024 to August 2025.</p>
 					<p>Location: 32.5022°N, 99.7892°W (Texas)</p>
 					<p>Imagery sourced from Sentinel-2 via Copernicus Data Space.</p>
-					<p>Cloud coverage: &lt; 30%</p>
 				</div>
 			</main>
 		</div>
@@ -151,12 +146,15 @@ const endDateStr = endDate.toISOString().split('T')[0];
 				height: 100%;
 				pointer-events: none;
 				z-index: 5;
+				display: flex;
+				align-items: flex-start;
+				justify-content: flex-start;
 			}
 
 			.football-field {
-				position: absolute;
-				bottom: 60px;
-				left: 20px;
+				position: relative;
+				margin-top: 20px;
+				margin-left: 20px;
 			}
 
 			.field-outline {
@@ -200,35 +198,6 @@ const endDateStr = endDate.toISOString().split('T')[0];
 				border-radius: 3px;
 			}
 
-			.controls {
-				display: flex;
-				flex-direction: row;
-				justify-content: center;
-				align-items: center;
-				gap: 15px;
-				margin: 20px 0;
-			}
-
-			.fetch-btn {
-				background: black;
-				color: white;
-				border: 2px solid white;
-				padding: 12px 24px;
-				cursor: pointer;
-				font-family: 'Fira Code', monospace;
-				font-size: 16px;
-				transition: all 0.2s;
-			}
-
-			.fetch-btn:hover:not(:disabled) {
-				background: white;
-				color: black;
-			}
-
-			.fetch-btn:disabled {
-				opacity: 0.5;
-				cursor: not-allowed;
-			}
 
 			.info {
 				background: black;
@@ -349,28 +318,6 @@ const endDateStr = endDate.toISOString().split('T')[0];
 					dateDisplay.textContent = currentImages[0].date;
 				}
 				
-				// Remove old markers and create new ones
-				const markersContainer = document.querySelector('.timeline-markers');
-				if (markersContainer && currentImages.length > 0) {
-					markersContainer.innerHTML = '';
-					currentImages.forEach((image, index) => {
-						const marker = document.createElement('div');
-						marker.className = 'marker';
-						marker.dataset.index = index;
-						if (currentImages.length > 1) {
-							marker.style.left = `${(index / (currentImages.length - 1)) * 100}%`;
-						} else {
-							marker.style.left = '50%';
-						}
-						marker.addEventListener('click', () => {
-							if (window.isPlaying) {
-								stopPlayback();
-							}
-							updateTimelineDisplay(index);
-						});
-						markersContainer.appendChild(marker);
-					});
-				}
 				
 				// Update play button event listener
 				if (playBtn) {
@@ -433,7 +380,6 @@ const endDateStr = endDate.toISOString().split('T')[0];
 					const timelineSlider = document.getElementById('timeline-slider');
 					const dateDisplay = document.getElementById('date-display');
 					const imageDate = document.getElementById('image-date');
-					const markers = document.querySelectorAll('.marker');
 					
 					if (timelineSlider) {
 						timelineSlider.value = index;
@@ -455,9 +401,6 @@ const endDateStr = endDate.toISOString().split('T')[0];
 						imageDate.textContent = formattedDate;
 					}
 					
-					markers.forEach((marker, i) => {
-						marker.classList.toggle('active', i === index);
-					});
 				}
 			}
 
@@ -504,85 +447,11 @@ const endDateStr = endDate.toISOString().split('T')[0];
 			window.isPlaying = false;
 			window.playInterval = null;
 
-			// Scale overlay functionality
-			let scaleVisible = true;
-
-			function toggleScale() {
-				const scaleOverlay = document.getElementById('scale-overlay');
-				const scaleToggleBtn = document.getElementById('scale-toggle-btn');
-				
-				scaleVisible = !scaleVisible;
-				
-				if (scaleVisible) {
-					scaleOverlay.style.display = 'block';
-					scaleToggleBtn.textContent = '📏 Hide Scale';
-				} else {
-					scaleOverlay.style.display = 'none';
-					scaleToggleBtn.textContent = '📏 Show Scale';
-				}
-			}
 
 
 			// Initialize the app
 			initializeApp();
 			
-			// Add event listeners
-			document.addEventListener('DOMContentLoaded', () => {
-				const fetchMoreBtn = document.getElementById('fetch-more-btn');
-				const scaleToggleBtn = document.getElementById('scale-toggle-btn');
-				
-				if (scaleToggleBtn) {
-					scaleToggleBtn.addEventListener('click', toggleScale);
-				}
-				
-				if (fetchMoreBtn) {
-					fetchMoreBtn.addEventListener('click', async () => {
-						const loading = document.getElementById('loading');
-						fetchMoreBtn.disabled = true;
-						fetchMoreBtn.textContent = '🔄 Fetching...';
-						
-						try {
-							const response = await fetch(`${BASE_URL}/api/images`, {
-								method: 'POST',
-								headers: {
-									'Content-Type': 'application/json',
-								},
-								body: JSON.stringify({
-									startDate: startDate.toISOString().split('T')[0],
-									endDate: endDate.toISOString().split('T')[0],
-									bbox: bbox,
-									fetchMore: true
-								})
-							});
-							const data = await response.json();
-							
-							if (data.newImageCount > 0) {
-								currentImages = data.images.sort((a, b) => new Date(a.date) - new Date(b.date));
-								updateTimeline();
-								updateTimelineDisplay(0);
-								fetchMoreBtn.textContent = `✅ Added ${data.newImageCount} images`;
-								setTimeout(() => {
-									fetchMoreBtn.textContent = '🔄 Fetch More Images';
-									fetchMoreBtn.disabled = false;
-								}, 3000);
-							} else {
-								fetchMoreBtn.textContent = '✅ No new images available';
-								setTimeout(() => {
-									fetchMoreBtn.textContent = '🔄 Fetch More Images';
-									fetchMoreBtn.disabled = false;
-								}, 3000);
-							}
-						} catch (error) {
-							console.error('Failed to fetch more images:', error);
-							fetchMoreBtn.textContent = '❌ Failed';
-							setTimeout(() => {
-								fetchMoreBtn.textContent = '🔄 Fetch More Images';
-								fetchMoreBtn.disabled = false;
-							}, 3000);
-						}
-					});
-				}
-			});
 		</script>
 	</body>
 </html>

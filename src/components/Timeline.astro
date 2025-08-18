@@ -23,25 +23,17 @@ const { images } = Astro.props;
     <span id="date-display" class="date-display">{images[0]?.date || ''}</span>
   </div>
   
-  <div class="timeline-markers">
-    {images.map((_, index) => (
-      <div 
-        class="marker" 
-        data-index={index}
-        style={`left: ${(index / (images.length - 1)) * 100}%`}
-      ></div>
-    ))}
-  </div>
 </div>
 
 <!-- Timeline functionality is handled by the main page JavaScript -->
 
-<style>
+<style is:global>
   .timeline-container {
     width: 100%;
-    padding: 20px;
+    padding: 15px;
     background: black;
     border: 2px solid white;
+    box-sizing: border-box;
   }
 
   .timeline-controls {
@@ -97,28 +89,4 @@ const { images } = Astro.props;
     min-width: 100px;
   }
 
-  .timeline-markers {
-    position: relative;
-    height: 10px;
-    background: #333;
-    border: 1px solid white;
-  }
-
-  .marker {
-    position: absolute;
-    width: 3px;
-    height: 10px;
-    background: white;
-    cursor: pointer;
-    transform: translateX(-50%);
-  }
-
-  .marker.active {
-    background: #ff0000;
-    width: 5px;
-  }
-
-  .marker:hover {
-    background: #ccc;
-  }
 </style>

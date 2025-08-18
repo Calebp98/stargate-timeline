@@ -7691,3 +7691,159 @@
 2025-08-18T09:28:42: Checking repository for existing images...
 2025-08-18T09:28:42: Found 105 cached images for date range (total in cache: 106)
 2025-08-18T09:28:42: Returning 105 cached images without fetching new ones
+2025-08-18T09:35:18: 09:35:18 [@astrojs/node] Server listening on 
+2025-08-18T09:35:18:   local: http://localhost:4321 	
+2025-08-18T09:35:18:   network: http://46.62.147.26:4321
+2025-08-18T09:35:18: 
+2025-08-18T09:35:23: API called with params: {
+2025-08-18T09:35:23:   startDate: '2024-02-18',
+2025-08-18T09:35:23:   endDate: '2025-08-18',
+2025-08-18T09:35:23:   bbox: [
+2025-08-18T09:35:23:     -99.8065975964918,
+2025-08-18T09:35:23:     32.492551389316205,
+2025-08-18T09:35:23:     -99.7717279119445,
+2025-08-18T09:35:23:     32.51217098523884
+2025-08-18T09:35:23:   ]
+2025-08-18T09:35:23: }
+2025-08-18T09:35:23: Environment check: { hasClientId: true, hasClientSecret: true }
+2025-08-18T09:35:23: Searching for available images with <30% cloud cover...
+2025-08-18T09:35:24: Search failed: 503
+2025-08-18T09:35:24: Search API unavailable, using intelligent sampling approach
+2025-08-18T09:35:24: Generated 26 potential dates using intelligent sampling
+2025-08-18T09:35:24: Checking repository for existing images...
+2025-08-18T09:35:24: Found 105 cached images for date range (total in cache: 106)
+2025-08-18T09:35:24: Cache load took 24ms
+2025-08-18T09:35:24: Returning 105 cached images without fetching new ones (cache load: 24ms)
+2025-08-18T09:36:04: API called with params: {
+2025-08-18T09:36:04:   startDate: '2024-02-18',
+2025-08-18T09:36:04:   endDate: '2025-08-18',
+2025-08-18T09:36:04:   bbox: [
+2025-08-18T09:36:04:     -99.8065975964918,
+2025-08-18T09:36:04:     32.492551389316205,
+2025-08-18T09:36:04:     -99.7717279119445,
+2025-08-18T09:36:04:     32.51217098523884
+2025-08-18T09:36:04:   ]
+2025-08-18T09:36:04: }
+2025-08-18T09:36:04: Environment check: { hasClientId: true, hasClientSecret: true }
+2025-08-18T09:36:04: Searching for available images with <30% cloud cover...
+2025-08-18T09:36:05: Search failed: 503
+2025-08-18T09:36:05: Search API unavailable, using intelligent sampling approach
+2025-08-18T09:36:05: Generated 26 potential dates using intelligent sampling
+2025-08-18T09:36:05: Checking repository for existing images...
+2025-08-18T09:36:05: Found 105 cached images for date range (total in cache: 106)
+2025-08-18T09:36:05: Cache load took 15ms
+2025-08-18T09:36:05: Returning 105 cached images without fetching new ones (cache load: 15ms)
+2025-08-18T09:36:13: API called with params: {
+2025-08-18T09:36:13:   startDate: '2024-02-18',
+2025-08-18T09:36:13:   endDate: '2025-08-18',
+2025-08-18T09:36:13:   bbox: [
+2025-08-18T09:36:13:     -99.8065975964918,
+2025-08-18T09:36:13:     32.492551389316205,
+2025-08-18T09:36:13:     -99.7717279119445,
+2025-08-18T09:36:13:     32.51217098523884
+2025-08-18T09:36:13:   ]
+2025-08-18T09:36:13: }
+2025-08-18T09:36:13: Environment check: { hasClientId: true, hasClientSecret: true }
+2025-08-18T09:36:13: Searching for available images with <30% cloud cover...
+2025-08-18T09:36:13: Search failed: 503
+2025-08-18T09:36:13: Search API unavailable, using intelligent sampling approach
+2025-08-18T09:36:13: Generated 26 potential dates using intelligent sampling
+2025-08-18T09:36:13: Checking repository for existing images...
+2025-08-18T09:36:13: Found 105 cached images for date range (total in cache: 106)
+2025-08-18T09:36:13: Cache load took 23ms
+2025-08-18T09:36:13: Returning 105 cached images without fetching new ones (cache load: 23ms)
+2025-08-18T10:08:19: API called with params: {
+2025-08-18T10:08:19:   startDate: '2024-02-18',
+2025-08-18T10:08:19:   endDate: '2025-08-18',
+2025-08-18T10:08:19:   bbox: [
+2025-08-18T10:08:19:     -99.8065975964918,
+2025-08-18T10:08:19:     32.492551389316205,
+2025-08-18T10:08:19:     -99.7717279119445,
+2025-08-18T10:08:19:     32.51217098523884
+2025-08-18T10:08:19:   ]
+2025-08-18T10:08:19: }
+2025-08-18T10:08:19: Environment check: { hasClientId: true, hasClientSecret: true }
+2025-08-18T10:08:19: Searching for available images with <30% cloud cover...
+2025-08-18T10:08:20: Search failed: 503
+2025-08-18T10:08:20: Search API unavailable, using intelligent sampling approach
+2025-08-18T10:08:20: Generated 26 potential dates using intelligent sampling
+2025-08-18T10:08:20: Checking repository for existing images...
+2025-08-18T10:08:20: Found 105 cached images for date range (total in cache: 106)
+2025-08-18T10:08:20: Cache load took 18ms
+2025-08-18T10:08:20: Returning 105 cached images without fetching new ones (cache load: 18ms)
+2025-08-18T10:08:21: API called with params: {
+2025-08-18T10:08:21:   startDate: '2024-02-18',
+2025-08-18T10:08:21:   endDate: '2025-08-18',
+2025-08-18T10:08:21:   bbox: [
+2025-08-18T10:08:21:     -99.8065975964918,
+2025-08-18T10:08:21:     32.492551389316205,
+2025-08-18T10:08:21:     -99.7717279119445,
+2025-08-18T10:08:21:     32.51217098523884
+2025-08-18T10:08:21:   ]
+2025-08-18T10:08:21: }
+2025-08-18T10:08:21: Environment check: { hasClientId: true, hasClientSecret: true }
+2025-08-18T10:08:21: Searching for available images with <30% cloud cover...
+2025-08-18T10:08:22: Search failed: 503
+2025-08-18T10:08:22: Search API unavailable, using intelligent sampling approach
+2025-08-18T10:08:22: Generated 26 potential dates using intelligent sampling
+2025-08-18T10:08:22: Checking repository for existing images...
+2025-08-18T10:08:22: Found 105 cached images for date range (total in cache: 106)
+2025-08-18T10:08:22: Cache load took 15ms
+2025-08-18T10:08:22: Returning 105 cached images without fetching new ones (cache load: 15ms)
+2025-08-18T10:08:24: API called with params: {
+2025-08-18T10:08:24:   startDate: '2024-02-18',
+2025-08-18T10:08:24:   endDate: '2025-08-18',
+2025-08-18T10:08:24:   bbox: [
+2025-08-18T10:08:24:     -99.8065975964918,
+2025-08-18T10:08:24:     32.492551389316205,
+2025-08-18T10:08:24:     -99.7717279119445,
+2025-08-18T10:08:24:     32.51217098523884
+2025-08-18T10:08:24:   ]
+2025-08-18T10:08:24: }
+2025-08-18T10:08:24: Environment check: { hasClientId: true, hasClientSecret: true }
+2025-08-18T10:08:24: Searching for available images with <30% cloud cover...
+2025-08-18T10:08:25: Search failed: 503
+2025-08-18T10:08:25: Search API unavailable, using intelligent sampling approach
+2025-08-18T10:08:25: Generated 26 potential dates using intelligent sampling
+2025-08-18T10:08:25: Checking repository for existing images...
+2025-08-18T10:08:25: Found 105 cached images for date range (total in cache: 106)
+2025-08-18T10:08:25: Cache load took 14ms
+2025-08-18T10:08:25: Returning 105 cached images without fetching new ones (cache load: 14ms)
+2025-08-18T10:08:27: API called with params: {
+2025-08-18T10:08:27:   startDate: '2024-02-18',
+2025-08-18T10:08:27:   endDate: '2025-08-18',
+2025-08-18T10:08:27:   bbox: [
+2025-08-18T10:08:27:     -99.8065975964918,
+2025-08-18T10:08:27:     32.492551389316205,
+2025-08-18T10:08:27:     -99.7717279119445,
+2025-08-18T10:08:27:     32.51217098523884
+2025-08-18T10:08:27:   ]
+2025-08-18T10:08:27: }
+2025-08-18T10:08:27: Environment check: { hasClientId: true, hasClientSecret: true }
+2025-08-18T10:08:27: Searching for available images with <30% cloud cover...
+2025-08-18T10:08:27: Search failed: 503
+2025-08-18T10:08:27: Search API unavailable, using intelligent sampling approach
+2025-08-18T10:08:27: Generated 26 potential dates using intelligent sampling
+2025-08-18T10:08:27: Checking repository for existing images...
+2025-08-18T10:08:27: Found 105 cached images for date range (total in cache: 106)
+2025-08-18T10:08:27: Cache load took 13ms
+2025-08-18T10:08:27: Returning 105 cached images without fetching new ones (cache load: 13ms)
+2025-08-18T10:08:30: API called with params: {
+2025-08-18T10:08:30:   startDate: '2024-02-18',
+2025-08-18T10:08:30:   endDate: '2025-08-18',
+2025-08-18T10:08:30:   bbox: [
+2025-08-18T10:08:30:     -99.8065975964918,
+2025-08-18T10:08:30:     32.492551389316205,
+2025-08-18T10:08:30:     -99.7717279119445,
+2025-08-18T10:08:30:     32.51217098523884
+2025-08-18T10:08:30:   ]
+2025-08-18T10:08:30: }
+2025-08-18T10:08:30: Environment check: { hasClientId: true, hasClientSecret: true }
+2025-08-18T10:08:30: Searching for available images with <30% cloud cover...
+2025-08-18T10:08:30: Search failed: 503
+2025-08-18T10:08:30: Search API unavailable, using intelligent sampling approach
+2025-08-18T10:08:30: Generated 26 potential dates using intelligent sampling
+2025-08-18T10:08:30: Checking repository for existing images...
+2025-08-18T10:08:30: Found 105 cached images for date range (total in cache: 106)
+2025-08-18T10:08:30: Cache load took 14ms
+2025-08-18T10:08:30: Returning 105 cached images without fetching new ones (cache load: 14ms)
