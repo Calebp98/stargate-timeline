@@ -45,6 +45,12 @@ const endDateStr = endDate.toISOString().split('T')[0];
 				
 				<Timeline images={[]} />
 				
+				<div class="download-section">
+					<button id="download-gif-btn" class="download-btn">
+						📥 Download Timeline GIF
+					</button>
+					<div id="download-status" class="download-status"></div>
+				</div>
 				
 				<div class="info">
 					<h3>About</h3>
@@ -200,6 +206,52 @@ const endDateStr = endDate.toISOString().split('T')[0];
 				border-radius: 3px;
 			}
 
+			.download-section {
+				background: black;
+				border: 2px solid white;
+				padding: 20px;
+				text-align: center;
+				margin-bottom: 20px;
+			}
+
+			.download-btn {
+				background: black;
+				color: white;
+				border: 2px solid white;
+				padding: 12px 24px;
+				font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+				font-size: 1em;
+				cursor: pointer;
+				border-radius: 4px;
+				transition: all 0.3s ease;
+			}
+
+			.download-btn:hover {
+				background: white;
+				color: black;
+				transform: translateY(-2px);
+				box-shadow: 0 4px 8px rgba(255, 255, 255, 0.2);
+			}
+
+			.download-btn:active {
+				transform: translateY(0);
+				box-shadow: 0 2px 4px rgba(255, 255, 255, 0.1);
+			}
+
+			.download-btn:disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+				transform: none;
+				box-shadow: none;
+			}
+
+			.download-status {
+				margin-top: 10px;
+				font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+				font-size: 0.9em;
+				color: #00ff00;
+			}
+
 			.info {
 				background: black;
 				border: 2px solid white;
@@ -272,6 +324,17 @@ const endDateStr = endDate.toISOString().split('T')[0];
 					padding: 1px 4px;
 				}
 
+				.download-section {
+					padding: 15px;
+					border: 1px solid white;
+					margin-bottom: 15px;
+				}
+
+				.download-btn {
+					padding: 10px 20px;
+					font-size: 0.9em;
+				}
+
 				.info {
 					padding: 12px;
 					border: 1px solid white;
@@ -326,6 +389,16 @@ const endDateStr = endDate.toISOString().split('T')[0];
 
 				.field-label {
 					font-size: 9px;
+				}
+
+				.download-section {
+					padding: 12px;
+					margin-bottom: 12px;
+				}
+
+				.download-btn {
+					padding: 8px 16px;
+					font-size: 0.8em;
 				}
 
 				.info {
@@ -574,6 +647,60 @@ const endDateStr = endDate.toISOString().split('T')[0];
 			window.isPlaying = false;
 			window.playInterval = null;
 
+			// Download GIF functionality
+			async function downloadGIF() {
+				const downloadBtn = document.getElementById('download-gif-btn');
+				const downloadStatus = document.getElementById('download-status');
+				
+				if (!downloadBtn || !downloadStatus) return;
+				
+				try {
+					downloadBtn.disabled = true;
+					downloadStatus.textContent = 'Preparing download...';
+					
+					const response = await fetch('/stargate-timeline/api/download-gif');
+					
+					if (!response.ok) {
+						throw new Error(`Failed to download: ${response.status}`);
+					}
+					
+					const blob = await response.blob();
+					const url = window.URL.createObjectURL(blob);
+					
+					// Create temporary download link
+					const a = document.createElement('a');
+					a.href = url;
+					a.download = 'stargate-timeline.gif';
+					document.body.appendChild(a);
+					a.click();
+					document.body.removeChild(a);
+					
+					// Clean up
+					window.URL.revokeObjectURL(url);
+					
+					downloadStatus.textContent = '✅ Download complete!';
+					setTimeout(() => {
+						downloadStatus.textContent = '';
+					}, 3000);
+					
+				} catch (error) {
+					console.error('Download error:', error);
+					downloadStatus.textContent = '❌ Download failed. Please try again.';
+					setTimeout(() => {
+						downloadStatus.textContent = '';
+					}, 5000);
+				} finally {
+					downloadBtn.disabled = false;
+				}
+			}
+
+			// Add event listener for download button
+			document.addEventListener('DOMContentLoaded', () => {
+				const downloadBtn = document.getElementById('download-gif-btn');
+				if (downloadBtn) {
+					downloadBtn.addEventListener('click', downloadGIF);
+				}
+			});
 
 			// Initialize the app
 			initializeApp();
